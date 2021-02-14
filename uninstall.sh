@@ -16,7 +16,6 @@ if [[ $? -eq 0 ]]; then
 	log INFO "Found service! Attempting to remove it before uninstall..."
 	systemctl stop valheim-server.service || log ERROR "Could not stop service!" 1
 	systemctl disable valheim-server.service || log ERROR "Could not disable service!" 1
-	systemctl stop valheim-server.service || log ERROR "Could not stop service!" 1
 	rm -f /lib/systemd/system/valheim-server.service || log ERROR "Could not delete systemd service file!" 1
 fi
 userdel -r valheim || log ERROR "Could not delete valheim user!" 1
