@@ -6,47 +6,37 @@ log() {
 	WARN=$'\e[1;33m'
 	INFO=$'\e[1;34m'
 	end=$'\e[0m'
-	printf "${!1}[$1] - $2${end}\n"
-	if [ ! -z $3 ]; then exit $3; fi
+	printf "%s[%s] - $2${end}\n" "${!1}" "$1"
+	if [ -n "$3" ]; then exit "$3"; fi
 }
 
 randpw() {
-	tr </dev/urandom -dc _A-Z-a-z-0-9 | head -c"${1:-16}"
-	echo
+	printf "%s" "$(tr </dev/urandom -dc _A-Z-a-z-0-9 | head -c"${1:-16}")"
 }
 
 usage() {
-	echo "This is an install bash script for a Valheim Server."
-	echo
-	echo "Syntax: $0 [-h|n|p|pb|wn|pw]"
-	echo "options:"
-	
-	echo "-h |--help"
-	echo "  Print help."
-
-	echo "-n |--name"
-	echo '  Set the server name - Default: "My Valheim Server"'
-	
-	echo "-p |--port"
-	echo '  Set the server port - Default: 2456'
-	
-	echo "-pb|--public"
-	echo '  Set the server port - Default: 1'
-
-	echo "-wn|--world-name"
-	echo '  Set the world name - Default: "Dedicated"'
-
-	echo "-pw|--password"
-	echo '  Set the password - Default: <random_16> NOTE: this will pe printed and saved in a file.'
-
-	echo ""
-	exit 0;
+	printf "This is an install script for a Valheim Server.\n"
+	printf "Syntax: %s [-h|n|p|pb|wn|pw]\n" "$0"
+	printf "options:\n"
+	printf "\t-h |--help\n"
+	printf "\t\tPrint help.\n"
+	printf "\t-n |--name\n"
+	printf "\t\tSet the server name - Default: \"My Valheim Server\"\n"
+	printf "\t-p |--port\n"
+	printf "\t\tSet the server port - Default: 2456\n"
+	printf "\t-pb|--public\n"
+	printf "\t\tSet the server port - Default: 1\n"
+	printf "\t-wn|--world-name\n"
+	printf "\t\tSet the world name - Default: \"Dedicated\"\n"
+	printf "\t-pw|--password\n"
+	printf "\t\tSet the password - Default: <random 16>\n"
+	exit 0
 }
 
 SERVER_NAME="My Valheim Server"
 SERVER_WORLD_NAME="Dedicated"
 SERVER_PORT="2456"
-SERVER_PASSWORD=$(randpw)
+SERVER_PASSWORD=$(randpw "$@")
 SERVER_PUBLIC=1
 
 POSITIONAL=()
@@ -111,67 +101,51 @@ else
 fi
 
 log INFO "Installing dependencies via apt ..."
-apt install software-properties-common || log ERROR "Could not install software-properties-common!" 1
+apt install software-properties-common -y || log ERROR "Could not install software-properties-common!" 1
 add-apt-repository multiverse || log ERROR "Could not add multiverse apt repository!" 1
 dpkg --add-architecture i386 || log ERROR "Cloud not add i386 arhitecture!" 1
 apt update || log ERROR "Could not update repository" 1
-apt install lib32gcc1 steamcmd  || log ERROR "Could not install other decepencies." 1
+apt install lib32gcc1 steamcmd -y || log ERROR "Could not install other decepencies." 1
 
 log INFO "Creating steam user..."
 useradd -m -d /opt/valheim -s /bin/bash valheim || log ERROR "Could not create valheim user!" 1
 
 log INFO "Create savefiles directory"
 mkdir -p /var/lib/valheim || log ERROR "Could not create valheim savefiles folder!" 1
-chown -R valheim:valheim /var/lib/valheim
+chown -R valheim:valheim /var/lib/valheim || log ERROR "Could not give permissions to valheim user for /var/lib/valheim !" 1
 
 runuser -l valheim -c 'ln -s /usr/games/steamcmd steamcmd' || log ERROR "Could not create steamcmd symbolic link for valheim user!" 1
 runuser -l valheim -c 'steamcmd +login anonymous +force_install_dir /opt/valheim/server +app_update 896660 validate +quit' || log ERROR "Could not download valheim dedicated server via steamcmd!" 1
 
-log INFO "Creating service start command script..."
-echo '#!/bin/bash' > /opt/valheim/start_valheim_server.sh  || log ERROR "Script write error!" 1
-echo "./opt/valheim/server/valheim_server.x86_64 \\"  >> /opt/valheim/start_valheim_server.sh  || log ERROR "Script write error!" 1
-echo "  -name \"${SERVER_NAME}\" \\"  >> /opt/valheim/start_valheim_server.sh || log ERROR "Script write error!" 1
-echo "  -port 2456 -world \"${SERVER_WORLD_NAME}\" \\" >> /opt/valheim/start_valheim_server.sh  || log ERROR "Script write error!" 1
-echo "  -password \"${SERVER_PASSWORD}\" \\" >> /opt/valheim/start_valheim_server.sh || log ERROR "Script write error!" 1
-echo "  -public ${SERVER_PUBLIC} \\" >> /opt/valheim/start_valheim_server.sh || log ERROR "Script write error!" 1
-echo '  -savedir "/var/lib/valheim"' >> /opt/valheim/start_valheim_server.sh || log ERROR "Script write error!" 1
-echo "" >> /opt/valheim/start_valheim_server.sh || log ERROR "Script write error!" 1
+mkdir -p /etc/valheim || log ERROR "Could not create valheim config file!" 1
+{
+	printf "SteamAppId=892970\n"
+	printf 'LD_LIBRARY_PATH=/opt/valheim/server/linux64:$LD_LIBRARY_PATH'
+	printf "\n"
+	printf "VALHEIM_SERVER_NAME=%s\n" "${SERVER_NAME}"
+	printf "VALHEIM_SERVER_WORLD_NAME=%s\n" "${SERVER_WORLD_NAME}"
+	printf "VALHEIM_SERVER_PORT=%s\n" "${SERVER_PORT}"
+	printf "VALHEIM_SERVER_PASSWORD=%s\n" "${SERVER_PASSWORD}"
+	printf "VALHEIM_SERVER_PUBLIC=%s\n" "${SERVER_PUBLIC}"
+} >/etc/valheim/config.properties || log ERROR "Could not create config file!" 1
+chown -R valheim:valheim /etc/valheim || log ERROR "Could not give permissions to valheim user for /etc/valheim !" 1
 
-chown valheim:valheim /opt/valheim/start_valheim_server.sh || log ERROR "Could not change owner to valheim user!" 1
-runuser -l valheim -c 'chmod o+x /opt/valheim/start_valheim_server.sh' || log ERROR "Could not make it executable!" 1
+log INFO "Creating service start command script..."
+cat start_valheim_server.sh.template >/opt/valheim/start_valheim_server.sh || log ERROR "Could not create start script!" 1
+chown valheim:valheim /opt/valheim/start_valheim_server.sh || log ERROR "Could not change owner to valheim user for the start script!" 1
+runuser -l valheim -c 'chmod o+x /opt/valheim/start_valheim_server.sh' || log ERROR "Could not make start script executable!" 1
 
 log INFO "Creating service stop command script..."
-echo '#!/bin/bash' > /opt/valheim/stop_valheim_server.sh  || log ERROR "Script write error!" 1
-echo 'echo 1 > /opt/valheim/server/server_exit.drp'  >> /opt/valheim/stop_valheim_server.sh  || log ERROR "Script write error!" 1
-echo "" >> /opt/valheim/stop_valheim_server.sh || log ERROR "Script write error!" 1
-
-chown valheim:valheim /opt/valheim/stop_valheim_server.sh || log ERROR "Could not change owner to valheim user!" 1
-runuser -l valheim -c 'chmod o+x /opt/valheim/stop_valheim_server.sh' || log ERROR "Could not make it executable!" 1
+cat stop_valheim_server.sh.template >/opt/valheim/stop_valheim_server.sh || log ERROR "Could not create stop script!" 1
+chown valheim:valheim /opt/valheim/stop_valheim_server.sh || log ERROR "Could not change owner to valheim user for the stop script!" 1
+runuser -l valheim -c 'chmod o+x /opt/valheim/stop_valheim_server.sh' || log ERROR "Could not make stop script executable!" 1
 
 log INFO "Creating service systemd file..."
-echo '[Unit]' > /lib/systemd/system/valheim-server.service || log ERROR "Script write error!" 1
-echo 'Description=Valheim Server Service' >> /lib/systemd/system/valheim-server.service || log ERROR "Script write error!" 1
-echo '[Service]' >> /lib/systemd/system/valheim-server.service || log ERROR "Script write error!" 1
-echo 'Environment="LD_LIBRARY_PATH=/opt/valheim/server/linux64:$LD_LIBRARY_PATH"' >> /lib/systemd/system/valheim-server.service || log ERROR "Script write error!" 1
-echo 'Environment="SteamAppId=892970"' >> /lib/systemd/system/valheim-server.service || log ERROR "Script write error!" 1
-echo 'ExecStartPre=/opt/valheim/steamcmd +login anonymous +force_install_dir /opt/valheim/server +app_update 896660 validate +quit' >> /lib/systemd/system/valheim-server.service || log ERROR "Script write error!" 1
-echo 'ExecStart=/bin/bash /opt/valheim/start_valheim_server.sh' >> /lib/systemd/system/valheim-server.service || log ERROR "Script write error!" 1
-echo 'ExecStop=/bin/bash /opt/valheim/stop_valheim_server.sh' >> /lib/systemd/system/valheim-server.service || log ERROR "Script write error!" 1
-echo 'User=valheim' >> /lib/systemd/system/valheim-server.service || log ERROR "Script write error!" 1
-echo 'Restart=always' >> /lib/systemd/system/valheim-server.service || log ERROR "Script write error!" 1
-echo '[Install]' >> /lib/systemd/system/valheim-server.service || log ERROR "Script write error!" 1
-echo 'WantedBy=multi-user.target' >> /lib/systemd/system/valheim-server.service || log ERROR "Script write error!" 1
-echo '' >> /lib/systemd/system/valheim-server.service || log ERROR "Script write error!" 1
+cat valheim-server.service.template >/lib/systemd/system/valheim-server.service || log ERROR "Could not create systemd service file!" 1
 
 systemctl enable valheim-server.service || log ERROR "Could not enable service!" 1
 systemctl start valheim-server.service || log ERROR "Could not start service!" 1
 
-log SUCC "Finished installing valheim server! Your server information:"
+log INFO "Configuration available at /opt/valheim/config"
 
-printf "SERVER_NAME=%s\n" "${SERVER_NAME}"
-printf "SERVER_WORLD_NAME=%s\n" "${SERVER_WORLD_NAME}"
-printf "SERVER_PORT=%s\n" "${SERVER_PORT}"
-printf "SERVER_PASSWORD=%s\n" "${SERVER_PASSWORD}"
-printf "SERVER_PUBLIC=%s\n" "${SERVER_PUBLIC}"
-
-log INFO "Make sure to copy the above information. Bye!" 0
+log SUCC "Finished installing your valheim server!" 0

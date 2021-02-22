@@ -6,8 +6,8 @@ log() {
 	WARN=$'\e[1;33m'
 	INFO=$'\e[1;34m'
 	end=$'\e[0m'
-	printf "${!1}[$1] - $2${end}\n"
-	if [ ! -z $3 ]; then exit $3; fi
+	printf "%s[%s] - $2${end}\n" "${!1}" "$1"
+	if [ -n "$3" ]; then exit "$3"; fi
 }
 
 log INFO "Checking if there is a service."
@@ -20,5 +20,6 @@ if [[ $? -eq 0 ]]; then
 fi
 userdel -r valheim || log ERROR "Could not delete valheim user!" 1
 rm -rf /var/lib/valheim || log ERROR "Could not remove data folder /var/lib/valheim!" 1
+rm -rf /etc/valheim || log ERROR "Could not delete config folder!" 1
 
 log SUCC "Finished uninstalling!" 0

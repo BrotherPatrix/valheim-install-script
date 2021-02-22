@@ -1,0 +1,9 @@
+#!/bin/bash
+
+./opt/valheim/server/valheim_server.x86_64 \
+  -name "${VALHEIM_SERVER_NAME}" \
+  -port ${VALHEIM_SERVER_PORT} \
+  -world "${VALHEIM_SERVER_WORLD_NAME}" \
+  -password "${VALHEIM_SERVER_PASSWORD}" \
+  -public ${VALHEIM_SERVER_PUBLIC} \
+  -savedir "/var/lib/valheim"
