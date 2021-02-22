@@ -1,13 +1,13 @@
 #!/bin/bash
 
 log() {
-	ERROR=$'\e[1;31m'
-	SUCC=$'\e[1;32m'
-	WARN=$'\e[1;33m'
-	INFO=$'\e[1;34m'
-	end=$'\e[0m'
-	printf "%s[%s] - $2${end}\n" "${!1}" "$1"
-	if [ -n "$3" ]; then exit "$3"; fi
+	ERROR=$'\e[1;31m';
+	SUCC=$'\e[1;32m';
+	WARN=$'\e[1;33m';
+	INFO=$'\e[1;34m';
+	end=$'\e[0m';
+	printf "%s[%s] - $2${end}\n" "${!1}" "$1";
+	if [ -n "$3" ]; then exit "$3"; fi;
 }
 
 randpw() {
@@ -15,7 +15,7 @@ randpw() {
 }
 
 usage() {
-	printf "This is an install script for a Valheim Server.\n"
+	printf "This is an install script for a Valheim Server.\n";
 	printf "Syntax: %s [-h|n|p|pb|wn|pw]\n" "$0"
 	printf "options:\n"
 	printf "\t-h |--help\n"
@@ -30,13 +30,13 @@ usage() {
 	printf "\t\tSet the world name - Default: \"Dedicated\"\n"
 	printf "\t-pw|--password\n"
 	printf "\t\tSet the password - Default: <random 16>\n"
-	exit 0
+	exit 0;
 }
 
 SERVER_NAME="My Valheim Server"
 SERVER_WORLD_NAME="Dedicated"
 SERVER_PORT="2456"
-SERVER_PASSWORD=$(randpw "$@")
+SERVER_PASSWORD=$(randpw)
 SERVER_PUBLIC=1
 
 POSITIONAL=()
@@ -45,7 +45,7 @@ while [[ $# -gt 0 ]]; do
 
 	case $key in
 	-h | --help)
-		usage
+		usage "$@"
 		;;
 	-n | --name)
 		SERVER_NAME="$2"
@@ -120,7 +120,7 @@ runuser -l valheim -c 'steamcmd +login anonymous +force_install_dir /opt/valheim
 mkdir -p /etc/valheim || log ERROR "Could not create valheim config file!" 1
 {
 	printf "SteamAppId=892970\n"
-	printf 'LD_LIBRARY_PATH=/opt/valheim/server/linux64:$LD_LIBRARY_PATH'
+	printf "LD_LIBRARY_PATH=/opt/valheim/server/linux64:\$LD_LIBRARY_PATH"
 	printf "\n"
 	printf "VALHEIM_SERVER_NAME=%s\n" "${SERVER_NAME}"
 	printf "VALHEIM_SERVER_WORLD_NAME=%s\n" "${SERVER_WORLD_NAME}"
