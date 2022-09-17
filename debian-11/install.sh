@@ -37,7 +37,7 @@ usage() {
 	echo '  Set the world name - Default: "Dedicated"'
 
 	echo "-pw|--password"
-	echo '  Set the password - Default: <random_16> NOTE: this will pe printed and saved in a file.'
+	echo '  Set the password - Default: <random_16> NOTE: this will be printed and saved in a file.'
 
 	echo ""
 	exit 0;
@@ -128,8 +128,6 @@ apt install software-properties-common || log ERROR "Could not install software-
 dpkg --add-architecture i386 || log ERROR "Cloud not add i386 arhitecture!" 1
 apt update || log ERROR "Could not update repository" 1
 apt install lib32gcc-s1 steamcmd  || log ERROR "Could not install other decepencies." 1
-
-log ERROR "Break!" 1
 
 log INFO "Creating steam user..."
 useradd -m -d /opt/valheim -s /bin/bash valheim || log ERROR "Could not create valheim user!" 1
