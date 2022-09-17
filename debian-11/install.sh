@@ -101,23 +101,35 @@ os_release=
 
 if test -f "$os_release_file"; then
 	log INFO "$os_release_file exists. Cheking OS..."
-	os_release=$(cat $os_release_file | grep "VERSION_ID=" | cut -d'=' -f2 | sed -e 's/^"//' -e 's/"$//')
-	log INFO "Discovered OS: ${os_release%\"}"
-	if [ "$os_release" != "11" ]; then
-		log ERROR "Only Ubuntu 20.04 is suported." 2
+	os_pretty_name=$(cat $os_release_file | grep "PRETTY_NAME=" | cut -d'=' -f2 | sed -e 's/^"//' -e 's/"$//')
+	log INFO "Discovered OS: ${os_pretty_name%\"}"
+	if [ "$os_pretty_name" != "Debian GNU/Linux 11 (bullseye)" ]; then
+		log ERROR "Only Debian GNU/Linux 11 (bullseye) is suported." 2
 	fi
 else
 	log ERROR "OS release file not present! Probably you are trying to install on an unsuported OS." 1
 fi
 
-log ERROR "Break!" 1
+mv /etc/apt/sources.list /etc/apt/sources.list-bkt
+
+cat <<'EOF' > /etc/apt/sources.list
+deb http://deb.debian.org/debian bullseye main contrib non-free
+deb-src http://deb.debian.org/debian bullseye main contrib non-free
+
+deb http://deb.debian.org/debian-security/ bullseye-security main contrib non-free
+deb-src http://deb.debian.org/debian-security/ bullseye-security main contrib non-free
+
+deb http://deb.debian.org/debian bullseye-updates main contrib non-free
+deb-src http://deb.debian.org/debian bullseye-updates main contrib non-free
+EOF
 
 log INFO "Installing dependencies via apt ..."
 apt install software-properties-common || log ERROR "Could not install software-properties-common!" 1
-add-apt-repository multiverse || log ERROR "Could not add multiverse apt repository!" 1
 dpkg --add-architecture i386 || log ERROR "Cloud not add i386 arhitecture!" 1
 apt update || log ERROR "Could not update repository" 1
-apt install lib32gcc1 steamcmd  || log ERROR "Could not install other decepencies." 1
+apt install lib32gcc-s1 steamcmd  || log ERROR "Could not install other decepencies." 1
+
+log ERROR "Break!" 1
 
 log INFO "Creating steam user..."
 useradd -m -d /opt/valheim -s /bin/bash valheim || log ERROR "Could not create valheim user!" 1
